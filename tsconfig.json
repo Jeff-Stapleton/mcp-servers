@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
+  "files": [],
+  "references": [
+    {
+      "path": "./apps/clickup-mcp-server"
+    },
+    {
+      "path": "./apps/digitalocean-mcp-server"
+    }
+  ]
+}
