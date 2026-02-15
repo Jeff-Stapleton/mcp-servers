@@ -8,6 +8,9 @@
     },
     {
       "path": "./apps/digitalocean-mcp-server"
+    },
+    {
+      "path": "./apps/tailscale-mcp-server"
     }
   ]
 }

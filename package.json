@@ -1,8 +1,11 @@
 {
-  "name": "@org/source",
+  "name": "@jeff-stapleton/mcp-servers",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "build": "nx run-many -t build",
+    "release": "nx release"
+  },
   "private": true,
   "devDependencies": {
     "@nx/esbuild": "22.5.0",

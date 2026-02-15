@@ -27,5 +27,11 @@
       "dependsOn": ["^build"],
       "inputs": ["production", "^production"]
     }
+  },
+  "release": {
+    "projects": ["apps/*"],
+    "version": {
+      "preVersionCommand": "npx nx run-many -t build"
+    }
   }
 }
