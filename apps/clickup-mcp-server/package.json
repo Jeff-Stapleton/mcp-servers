@@ -1,8 +1,17 @@
 {
   "name": "@org/clickup-mcp-server",
-  "version": "0.0.1",
-  "private": true,
+  "version": "2.0.0",
+  "description": "MCP server for ClickUp integration",
+  "license": "MIT",
   "type": "module",
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "clickup"
+  ],
+  "files": [
+    "dist"
+  ],
   "bin": {
     "clickup-mcp-server": "./dist/main.js"
   },
@@ -20,7 +29,7 @@
           "format": [
             "esm"
           ],
-          "bundle": false,
+          "bundle": true,
           "main": "apps/clickup-mcp-server/src/main.ts",
           "tsConfig": "apps/clickup-mcp-server/tsconfig.app.json",
           "assets": [
@@ -30,6 +39,9 @@
             "sourcemap": true,
             "outExtension": {
               ".js": ".js"
+            },
+            "banner": {
+              "js": "#!/usr/bin/env node"
             }
           }
         },
@@ -40,9 +52,18 @@
               "sourcemap": false,
               "outExtension": {
                 ".js": ".js"
+              },
+              "banner": {
+                "js": "#!/usr/bin/env node"
               }
             }
           }
+        }
+      },
+      "nx-release-publish": {
+        "executor": "@nx/js:release-publish",
+        "options": {
+          "packageRoot": "apps/clickup-mcp-server"
         }
       },
       "prune-lockfile": {
