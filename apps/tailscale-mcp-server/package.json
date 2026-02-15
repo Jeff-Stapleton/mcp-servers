@@ -1,6 +1,6 @@
 {
   "name": "@jeff-stapleton/tailscale-mcp-server",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "MCP server for managing Tailscale via the API",
   "license": "MIT",
   "type": "module",
