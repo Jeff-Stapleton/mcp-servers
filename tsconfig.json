@@ -11,6 +11,9 @@
     },
     {
       "path": "./apps/tailscale-mcp-server"
+    },
+    {
+      "path": "./apps/auth0-mcp-server"
     }
   ]
 }
