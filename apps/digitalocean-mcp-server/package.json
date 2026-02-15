@@ -1,6 +1,6 @@
 {
-  "name": "@org/digitalocean-mcp-server",
-  "version": "1.0.1",
+  "name": "@jeff-stapleton/digitalocean-mcp-server",
+  "version": "1.0.2",
   "description": "MCP server for DigitalOcean integration",
   "license": "MIT",
   "type": "module",
@@ -9,6 +9,9 @@
     "mcp-server",
     "digitalocean"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "dist"
   ],
@@ -108,15 +111,15 @@
           "build"
         ],
         "options": {
-          "buildTarget": "@org/digitalocean-mcp-server:build",
+          "buildTarget": "@jeff-stapleton/digitalocean-mcp-server:build",
           "runBuildTargetDependencies": false
         },
         "configurations": {
           "development": {
-            "buildTarget": "@org/digitalocean-mcp-server:build:development"
+            "buildTarget": "@jeff-stapleton/digitalocean-mcp-server:build:development"
           },
           "production": {
-            "buildTarget": "@org/digitalocean-mcp-server:build:production"
+            "buildTarget": "@jeff-stapleton/digitalocean-mcp-server:build:production"
           }
         }
       }

@@ -1,6 +1,6 @@
 {
-  "name": "@org/clickup-mcp-server",
-  "version": "1.0.1",
+  "name": "@jeff-stapleton/clickup-mcp-server",
+  "version": "1.0.2",
   "description": "MCP server for ClickUp integration",
   "license": "MIT",
   "type": "module",
@@ -9,6 +9,9 @@
     "mcp-server",
     "clickup"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "dist"
   ],
@@ -108,15 +111,15 @@
           "build"
         ],
         "options": {
-          "buildTarget": "@org/clickup-mcp-server:build",
+          "buildTarget": "@jeff-stapleton/clickup-mcp-server:build",
           "runBuildTargetDependencies": false
         },
         "configurations": {
           "development": {
-            "buildTarget": "@org/clickup-mcp-server:build:development"
+            "buildTarget": "@jeff-stapleton/clickup-mcp-server:build:development"
           },
           "production": {
-            "buildTarget": "@org/clickup-mcp-server:build:production"
+            "buildTarget": "@jeff-stapleton/clickup-mcp-server:build:production"
           }
         }
       }
