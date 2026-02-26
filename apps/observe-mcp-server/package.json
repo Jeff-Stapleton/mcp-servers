@@ -1,13 +1,14 @@
 {
-  "name": "@jeff-stapleton/tailscale-mcp-server",
+  "name": "@jeff-stapleton/observe-mcp-server",
   "version": "2.0.0",
-  "description": "MCP server for managing Tailscale via the API",
+  "description": "MCP server for Observe observability platform integration",
   "license": "MIT",
   "type": "module",
   "keywords": [
     "mcp",
     "mcp-server",
-    "tailscale"
+    "observe",
+    "observability"
   ],
   "publishConfig": {
     "access": "public"
@@ -16,7 +17,7 @@
     "dist"
   ],
   "bin": {
-    "tailscale-mcp-server": "./dist/main.js"
+    "observe-mcp-server": "./dist/main.js"
   },
   "nx": {
     "targets": {
@@ -28,15 +29,15 @@
         "defaultConfiguration": "production",
         "options": {
           "platform": "node",
-          "outputPath": "apps/tailscale-mcp-server/dist",
+          "outputPath": "apps/observe-mcp-server/dist",
           "format": [
             "esm"
           ],
           "bundle": true,
-          "main": "apps/tailscale-mcp-server/src/main.ts",
-          "tsConfig": "apps/tailscale-mcp-server/tsconfig.app.json",
+          "main": "apps/observe-mcp-server/src/main.ts",
+          "tsConfig": "apps/observe-mcp-server/tsconfig.app.json",
           "assets": [
-            "apps/tailscale-mcp-server/src/assets"
+            "apps/observe-mcp-server/src/assets"
           ],
           "esbuildOptions": {
             "sourcemap": true,
@@ -66,7 +67,7 @@
       "nx-release-publish": {
         "executor": "@nx/js:release-publish",
         "options": {
-          "packageRoot": "apps/tailscale-mcp-server"
+          "packageRoot": "apps/observe-mcp-server"
         }
       },
       "prune-lockfile": {
@@ -76,8 +77,8 @@
         "cache": true,
         "executor": "@nx/js:prune-lockfile",
         "outputs": [
-          "{workspaceRoot}/apps/tailscale-mcp-server/dist/package.json",
-          "{workspaceRoot}/apps/tailscale-mcp-server/dist/package-lock.json"
+          "{workspaceRoot}/apps/observe-mcp-server/dist/package.json",
+          "{workspaceRoot}/apps/observe-mcp-server/dist/package-lock.json"
         ],
         "options": {
           "buildTarget": "build"
@@ -89,7 +90,7 @@
         ],
         "cache": true,
         "outputs": [
-          "{workspaceRoot}/apps/tailscale-mcp-server/dist/workspace_modules"
+          "{workspaceRoot}/apps/observe-mcp-server/dist/workspace_modules"
         ],
         "executor": "@nx/js:copy-workspace-modules",
         "options": {
@@ -111,15 +112,15 @@
           "build"
         ],
         "options": {
-          "buildTarget": "@jeff-stapleton/tailscale-mcp-server:build",
+          "buildTarget": "@jeff-stapleton/observe-mcp-server:build",
           "runBuildTargetDependencies": false
         },
         "configurations": {
           "development": {
-            "buildTarget": "@jeff-stapleton/tailscale-mcp-server:build:development"
+            "buildTarget": "@jeff-stapleton/observe-mcp-server:build:development"
           },
           "production": {
-            "buildTarget": "@jeff-stapleton/tailscale-mcp-server:build:production"
+            "buildTarget": "@jeff-stapleton/observe-mcp-server:build:production"
           }
         }
       }

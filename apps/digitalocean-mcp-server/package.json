@@ -1,6 +1,6 @@
 {
   "name": "@jeff-stapleton/digitalocean-mcp-server",
-  "version": "1.0.6",
+  "version": "2.0.0",
   "description": "MCP server for DigitalOcean integration",
   "license": "MIT",
   "type": "module",
@@ -125,5 +125,8 @@
       }
     }
   },
-  "dependencies": {}
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "zod": "^4.3.6"
+  }
 }
