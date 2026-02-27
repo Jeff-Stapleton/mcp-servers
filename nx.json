@@ -30,6 +30,7 @@
   },
   "release": {
     "projects": ["apps/*"],
+    "projectsRelationship": "independent",
     "version": {
       "preVersionCommand": "npx nx run-many -t build"
     }

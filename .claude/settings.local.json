@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm whoami:*)",
+      "Bash(npm config get:*)",
+      "Bash(npm install:*)",
+      "Bash(npx nx:*)",
+      "Bash(node:*)",
+      "Bash(OBSERVE_CUSTOMER_ID=test node:*)",
+      "Bash(npm run:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(mv .npmrc:*)",
+      "Bash(git rebase:*)",
+      "Bash(git merge:*)",
+      "Bash(git:*)",
+      "mcp__observe__list_datasets",
+      "Bash(claude mcp:*)",
+      "Bash(printenv:*)",
+      "Bash(curl:*)",
+      "mcp__observe__search_logs",
+      "Bash(printf exit code: %d\\\\n:*)",
+      "Bash(npm cache:*)",
+      "Bash(npm view:*)",
+      "Bash(python3 -c \":*)",
+      "mcp__observe__execute_opal_query"
+    ]
+  }
+}
