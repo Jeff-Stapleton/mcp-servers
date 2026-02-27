@@ -1,3 +1,14 @@
+## 2.0.1 (2026-02-27)
+
+### 🚀 Features
+
+- implement observe-mcp-server with full Observe API integration ([bd6c559](https://github.com/Jeff-Stapleton/mcp-servers/commit/bd6c559))
+
+### ❤️ Thank You
+
+- Claude Opus 4.6
+- Jeff Stapleton
+
 ## 1.0.6 (2026-02-16)
 
 This was a version bump only, there were no code changes.
