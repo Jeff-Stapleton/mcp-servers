@@ -1,0 +1,3825 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Observe API",
+    "description": "# Overview\nWelcome to the Observe API Docs!\n\nThe Observe API is a RESTful API. POST bodies and responses are typically JSON-encoded.\n\n## Authentication\nRequests to the Observe API are authenticated with an API token. The token can be supplied using HTTP Bearer authentication:\n```\n// passing token as bearer token\ncurl -H \"Authorization: Bearer <customerid> <token>\" https://<customerid>.<observe-domain>.com/v1/...\n```\n",
+    "version": "1.0.230307"
+  },
+  "servers": [
+    {
+      "url": "https://{customerid}.observeinc.com",
+      "description": "US west server",
+      "variables": {
+        "customerid": {
+          "default": "OBSERVE_CUSTOMERID",
+          "description": "The customer ID for your instance."
+        }
+      }
+    },
+    {
+      "url": "https://{customerid}.{cluster}.observeinc.com",
+      "description": "Specific regional cluster (prod)",
+      "variables": {
+        "customerid": {
+          "default": "OBSERVE_CUSTOMERID",
+          "description": "The customer ID for your instance."
+        },
+        "cluster": {
+          "enum": [
+            "eu-1",
+            "ap-1"
+          ],
+          "default": "eu-1",
+          "description": "For regional clusters, choose one."
+        }
+      }
+    },
+    {
+      "url": "https://{customerid}.{domain}.com",
+      "description": "Specific Observe server",
+      "variables": {
+        "customerid": {
+          "default": "OBSERVE_CUSTOMERID",
+          "description": "The customer ID for your instance."
+        },
+        "domain": {
+          "default": "OBSERVE_DOMAIN",
+          "description": "The Observe domain for your instance."
+        }
+      }
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Export",
+      "description": "Export query results from Observe.\n"
+    },
+    {
+      "name": "Login",
+      "description": "Manage api tokens. Learn more about [api tokens](https://docs.observeinc.com/en/latest/content/reference/ObserveAPIAuth.html).\n"
+    },
+    {
+      "name": "Dataset Legacy",
+      "description": "Legacy dataset endpoints. Will be deprecated in the future.\n"
+    },
+    {
+      "name": "Monitor",
+      "description": "Manage monitors. Learn more about [monitors](https://docs.observeinc.com/en/latest/content/monitors/MonitorsIntro.html).\n"
+    },
+    {
+      "name": "ReferenceTables",
+      "x-displayName": "Reference Table",
+      "description": "Manage reference tables. Learn more about [reference tables](https://docs.observeinc.com/en/latest/content/reference/ReferenceTables.html).\n"
+    },
+    {
+      "name": "ServiceAccounts",
+      "x-displayName": "Service Account",
+      "description": "Manage service accounts and api tokens. Beta: Contact us to enable for your account.\n"
+    }
+  ],
+  "paths": {
+    "/v1/login": {
+      "post": {
+        "summary": "Generate an API token",
+        "operationId": "generateAPIToken",
+        "tags": [
+          "Login"
+        ],
+        "description": "Given an email address and a password, generate an API authorization token.\nThis token can be used with Bearer authorization when used together with\nthe customer ID. (The customer ID is the same as the first number in the API\nserver URL.)\n\n```\nAuthorization: Bearer <customerid> <apitoken>\n```\n\nOnly \"local\" users that have a password can use this API; SSO users cannot\nlog in using a password.\n\nThis endpoint does not itself need to Authorization header.\n",
+        "security": [],
+        "requestBody": {
+          "description": "The login username and password.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "user_email",
+                  "user_password"
+                ],
+                "properties": {
+                  "user_email": {
+                    "description": "The email address of the user to mint credentials for.",
+                    "type": "string"
+                  },
+                  "user_password": {
+                    "description": "The password of the user minting credentials.",
+                    "type": "string",
+                    "format": "password"
+                  },
+                  "tokenName": {
+                    "description": "Optional name of the token, to remember what it is for.",
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "user_email": "user@example.com",
+                "user_password": "hunter1",
+                "tokenName": "for the coin tracker integration"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "## Description of result data formats\n\n### Content-type: application/json\nThe response contains an 'ok' field (boolean) and an \"access_key\"\nfield (string).  The \"access_key\" is a secret value and is as good\nas the password for accessing the customer instance, so treat it\nwith care. You must remember it, because it is not stored and\ncannot be retrieved again, although another access key can be\ngenerated through another invocation of the API.  By default,\naccess keys that are not used, are invalidated after about 10 days\nof inactivity.\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "{\"ok\":true,\"access_key\":\"ZrL5BhtFXvu2Xe78GznP1dP2Ts81ZszA\"}\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request."
+          }
+        }
+      }
+    },
+    "/v1/login/delegated": {
+      "post": {
+        "summary": "Start an Observe authtoken creation flow",
+        "operationId": "startDelegatedLogin",
+        "tags": [
+          "Login"
+        ],
+        "description": "This endpoint starts an authorization flow that lets an Observe user generate an\nauthorization token to use for external tools and scripts. This token will have\nthe same powers as the user authorizing, and can be passed in the\n`Authorization: Bearer <customerid> <apitoken>` header of requqests.\nThis endpoint will return with a URL that the user should visit in a web browser\nto allow the token creation; that URL will lead to a page that requires the user\nto be logged in (through whatever password or SSO mechanism the user normally uses.)\nThe response from this endpoint also includes a \"serverToken\" field, which is a\ntoken that can be used to poll the tenant for the status of the token creation, and\nif successful, will return the issued access key.\n\nEssentially, this endpoint implements the Oauth \"device\" authorization flow.\n",
+        "security": [],
+        "requestBody": {
+          "description": "The credentials to authorize as.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "userEmail",
+                  "clientToken",
+                  "integration"
+                ],
+                "properties": {
+                  "userEmail": {
+                    "description": "The email address of the user to mint credentials for.",
+                    "type": "string"
+                  },
+                  "clientToken": {
+                    "description": "A token generated by the client to identify this particular request.\nWe recommend a random alphanumeric string of length 24 characters or\nmore to avoid collisions. There is no power or security imbued into\nthis token, other than to tell different simultaneous authorization\nrequests for the same user apart.\n",
+                    "type": "string"
+                  },
+                  "integration": {
+                    "description": "The identifier of the particular integration making this request.\nIntegration should be configured in the Observe back-end, but there\nis currently no UI for this, so you can use the ID of the Observe\ncommand-line tool `observe-tool-abdaf0`.\n",
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "userEmail": "user@example.com",
+                "clientToken": "ZrL5BhtFXvu2Xe78GznP1dP2Ts81ZszA",
+                "integration": "observe-tool-abdaf0"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "This request generates a \"pending\" login request, which the user will have\nto authorize on the Observe website. Send the user to the given URL in a\nweb browser, and then poll the API for the completion endpoint to see whether\nthe user accepts, denies, or times out the request.\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "url",
+                    "serverToken"
+                  ],
+                  "properties": {
+                    "url": {
+                      "description": "The URL to send the user to in a web browser.",
+                      "type": "string"
+                    },
+                    "serverToken": {
+                      "description": "A token that can be used to poll the tenant for the status of the token creation.\nThis token has some authorization power (because it can be exchanged, once, for a\nreal token) so treat it carefully.\n",
+                      "type": "string",
+                      "format": "password"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "description": "Whether this HTTP request was valid (does not indicate completion status).",
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "description": "A message from the server. In case of error, this may be helpful to display to the user.\n",
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "ok": false,
+                  "message": "Invalid request."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/login/delegated/{serverToken}": {
+      "get": {
+        "summary": "Poll the status of a pending login request",
+        "operationId": "pollDelegatedLogin",
+        "tags": [
+          "Login"
+        ],
+        "description": "This endpoint polls the status of a pending login request. The serverToken is\nreturned from the initial request, and is used to identify the request.\n",
+        "parameters": [
+          {
+            "name": "serverToken",
+            "in": "path",
+            "description": "The serverToken returned from the initial request.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "password"
+            }
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "The request is still pending, or has been accepted, denied, or timed out.\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "settled"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "description": "Whether this HTTP request was valid (does not indicate completion status).",
+                      "type": "boolean"
+                    },
+                    "settled": {
+                      "description": "If the request has been accepted, denied, or timed out (is settled) then this is true,\nelse if we need to poll again, it is false. If the request is not yet settled, the server\nside will wait a bit before returning this response, which allows the client to easily\nimplement long polling.\n",
+                      "type": "boolean"
+                    },
+                    "accessKey": {
+                      "description": "The access key if the request has been accepted. If the request is settled but not\naccepted, it will be empty. Note that only the first request after the login is settled\nwill contain the access key, because it is generated once and not stored server side\n(only a hash is stored, for later API request authentication.) This key imbues the same\npowers in the Observe API as are available to the issuing user.\n",
+                      "type": "string",
+                      "format": "password"
+                    },
+                    "message": {
+                      "description": "A message from the server. In case of error, this may be helpful to display to the user.\n",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request."
+          }
+        }
+      }
+    },
+    "/v1/meta/export/query": {
+      "post": {
+        "summary": "Execute an OPAL query",
+        "operationId": "exportQuery",
+        "tags": [
+          "Export"
+        ],
+        "description": "Execute an OPAL query.\n\nResults can be returned as CSV or NDJSON.\n* Set Accept header to `text/csv` or `application/x-ndjson`\n* Default: CSV\n\nEither two of `startTime`, `endTime`, and `interval` or `interval` alone can be specified to set the time interval. The `startTime` parameter is inclusive and the `endTime` parameter is exclusive, to prevent overlap from subsequent windows.\n\n* `interval`: An interval relative to now\n* `startTime` + `endTime`: The specified time interval\n* `startTime` **or** `endTime` + `interval`: The specified time interval relative to the provided start or end time\n\nInputs are specified as dataset IDs, or previously-defined stages.\n\nSet paginate to true for an asynchronous paginated mode. The response will be 202 Accepted and contain headers for fetching the results via `/v1/meta/export/query/page`. You may also want to increase rowCount to allow large, paginated queries.\n",
+        "parameters": [
+          {
+            "name": "startTime",
+            "in": "query",
+            "description": "Beginning of time window (inclusive) as ISO time.",
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "examples": {
+              "A start time": {
+                "value": "2023-04-20T16:20:00Z"
+              }
+            }
+          },
+          {
+            "name": "endTime",
+            "in": "query",
+            "description": "End of time window (exclusive) as ISO time. Defaults to now if just `interval` is specified.",
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "examples": {
+              "An end time": {
+                "value": "2023-04-20T16:30:00Z"
+              }
+            }
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "description": "Length of time window (if start or end is missing).",
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "examples": {
+              "An interval": {
+                "value": "10m",
+                "summary": "A duration in h / m / s units"
+              }
+            }
+          },
+          {
+            "name": "stage",
+            "in": "query",
+            "description": "Which stage to get the data from. Defaults to last stage.",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "paginate",
+            "in": "query",
+            "description": "Whether to switch to an asynchronous paginated mode. Defaults to false.",
+            "schema": {
+              "type": "boolean"
+            },
+            "required": false
+          }
+        ],
+        "requestBody": {
+          "description": "The OPAL query text and input dataset bindings.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query"
+                ],
+                "properties": {
+                  "query": {
+                    "description": "Encodes the actual OPAL query and its inputs.",
+                    "type": "object",
+                    "required": [
+                      "stages"
+                    ],
+                    "properties": {
+                      "outputStage": {
+                        "type": "string",
+                        "description": "The name of the stage that will be used as output. Defaults to the last specified stage."
+                      },
+                      "stages": {
+                        "type": "array",
+                        "description": "Describes one or more stage pipelines to execute. Stages can reference each other, but not in a cyclic fashion.",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "input",
+                            "stageID",
+                            "pipeline"
+                          ],
+                          "properties": {
+                            "input": {
+                              "description": "Describes the @name bindings for input datasets or stages. The first input is provided as the default input to the pipeline.",
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/InputDefinition"
+                              }
+                            },
+                            "stageID": {
+                              "description": "The ID to assign to this stage when binding as input to other datasets.",
+                              "type": "string"
+                            },
+                            "pipeline": {
+                              "description": "The actual OPAL pipeline to execute. You can use embedded newlines,\nor the pipe | character to separate verb clauses. You can include\nembedded sub-queries, too.\n",
+                              "type": "string"
+                            },
+                            "parameters": {
+                              "$ref": "#/components/schemas/ParameterArray"
+                            },
+                            "parameterValues": {
+                              "$ref": "#/components/schemas/ParameterValueArray"
+                            }
+                          }
+                        }
+                      },
+                      "parameters": {
+                        "$ref": "#/components/schemas/ParameterArray"
+                      },
+                      "parameterValues": {
+                        "$ref": "#/components/schemas/ParameterValueArray"
+                      }
+                    }
+                  },
+                  "rowCount": {
+                    "description": "The maximum number of rows to return. Defaults to 100,000, which is the maximum if paginate=false. If paginate=true rowCount can be up to the maximum value of int64 (9,223,372,036,854,775,807).",
+                    "type": "string",
+                    "format": "int64",
+                    "minimum": 0,
+                    "maximum": 100000
+                  },
+                  "presentation": {
+                    "$ref": "#/components/schemas/StagePresentationInput"
+                  }
+                }
+              },
+              "example": {
+                "query": {
+                  "outputStage": "myStage",
+                  "stages": [
+                    {
+                      "input": [
+                        {
+                          "inputName": "main",
+                          "datasetId": "41007104"
+                        },
+                        {
+                          "inputName": "rds",
+                          "datasetPath": "Workspace.aws/RDS Cluster"
+                        }
+                      ],
+                      "stageID": "myStage",
+                      "pipeline": "pick_col timestamp, log, namespace, containerName, rdsArn\nleftjoin on(rdsArn=@rds.arn), db:@rds.DBClusterIdentifier\n"
+                    }
+                  ]
+                },
+                "rowCount": "2"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "## Description of result data formats\n\n### Content-type: application/x-ndjson\nThe results are returned with each row represented as distinct json objects separated by newlines.\nThe contents of the json object representing each row is keys representing each column in the output, with values representing the value of that that column for that row.\n\n### Content-type: text/csv\nThe results are returned in csv format, the first row in csv is a header row with the names of the columns.\n",
+            "content": {
+              "application/x-ndjson": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "{\"timestamp\":\"2023-03-08T18:59:42.397994726Z\",\"log\":\"I0308 18:59:42.397931             60689787 apiserver/authorize.go:545] msg=\\\"VerifyAuthorization failed\\\" customer_id=999999999999 service=collector operation=2 token=\\\"xxxxxx... (hash h:xxxxxxx)\\\"\",\"namespace\":\"prod\",\"containerName\":\"collector\"}\n{\"timestamp\":\"2023-03-08T18:59:42.674391618Z\",\"log\":\"I0308 18:59:42.397945             60689787 httputil/helpers.go:70] serveStatusError(401): \\\"Unauthorized\\\"\",\"namespace\":\"prod\",\"containerName\":\"collector\"}\n"
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "\"timestamp\",\"log\",\"namespace\",\"containerName\"\n\"2023-03-08T18:59:42.397994726Z\",\"I0308 18:59:42.397931             60689787 apiserver/authorize.go:545] msg=\"\"VerifyAuthorization failed\"\" customer_id=999999999999 service=collector operation=2 token=\"\"xxxxxx... (hash h:xxxxxxx)\"\"\",\"prod\",\"collector\"\n\"2023-03-08T18:59:42.674391618Z\",\"I0308 18:59:42.397945             60689787 httputil/helpers.go:70] serveStatusError(401): \"\"Unauthorized\"\"\",\"prod\",\"collector\"\n"
+              }
+            }
+          },
+          "202": {
+            "description": "The paginated query request was accepted and will be executed asynchronously.  The response contains two headers that can be used to fetch the results.  There is no body sent.",
+            "headers": {
+              "X-Observe-Cursor-Id": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The ID of a cursor that can be used to fetch the results; to be used with the /v1/meta/export/query/page endpoint.  See that endpoint for more details."
+              },
+              "X-Observe-Next-Page": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "A link to the first page of results, which will contain the cursor ID query parameter, but will omit the offset and numRows query parameters.\nThose defaults can be overriden by adding them to the query parameters.\n"
+              }
+            }
+          },
+          "206": {
+            "description": "The query was executed successfully, but the results returned cover only a part of the query window. This happens when the datasets queried are not accelerated for the entire query window.\n## Description of result data formats\n\n### Content-type: application/x-ndjson\nThe results are returned with each row represented as distinct json objects separated by newlines.\nThe contents of the json object representing each row is keys representing each column in the output, with values representing the value of that that column for that row.\n\n### Content-type: text/csv\nThe results are returned in csv format, the first row in csv is a header row with the names of the columns.\n",
+            "content": {
+              "application/x-ndjson": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "{\"timestamp\":\"2023-03-08T18:59:42.397994726Z\",\"log\":\"I0308 18:59:42.397931             60689787 apiserver/authorize.go:545] msg=\\\"VerifyAuthorization failed\\\" customer_id=999999999999 service=collector operation=2 token=\\\"xxxxxx... (hash h:xxxxxxx)\\\"\",\"namespace\":\"prod\",\"containerName\":\"collector\"}\n{\"timestamp\":\"2023-03-08T18:59:42.674391618Z\",\"log\":\"I0308 18:59:42.397945             60689787 httputil/helpers.go:70] serveStatusError(401): \\\"Unauthorized\\\"\",\"namespace\":\"prod\",\"containerName\":\"collector\"}\n"
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "\"timestamp\",\"log\",\"namespace\",\"containerName\"\n\"2023-03-08T18:59:42.397994726Z\",\"I0308 18:59:42.397931             60689787 apiserver/authorize.go:545] msg=\"\"VerifyAuthorization failed\"\" customer_id=999999999999 service=collector operation=2 token=\"\"xxxxxx... (hash h:xxxxxxx)\"\"\",\"prod\",\"collector\"\n\"2023-03-08T18:59:42.674391618Z\",\"I0308 18:59:42.397945             60689787 httputil/helpers.go:70] serveStatusError(401): \"\"Unauthorized\"\"\",\"prod\",\"collector\"\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Query not accepted."
+          },
+          "401": {
+            "description": "Authorization missing."
+          },
+          "403": {
+            "description": "Authorization denied."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          },
+          "500": {
+            "description": "Internal error: query error."
+          },
+          "504": {
+            "description": "Internal error: infrastructure error."
+          }
+        }
+      }
+    },
+    "/v1/meta/export/query/page": {
+      "get": {
+        "summary": "Fetch a page of query results",
+        "operationId": "exportQueryPage",
+        "tags": [
+          "Export"
+        ],
+        "description": "Fetch the results of a paginated \"/v1/meta/export/query\" request.\n\nNote that paginate must be set to true and rowCount should be set high enough to contain the total expected result set.\n\nThis endpoint uses long polling behavior. If a query is in progress when a request is made, the server will delay responding for up to 30 seconds. If the query completes in that time period, the results will be returned with a 200 response code. Otherwise a 202 response code will be returned, and the client should retry the request. The endpoint will also return an error if the query failed.\n\nQueries for paginated data will return an `X-Observe-Total-Rows` header and an `X-Observe-Next-Page` header with a URL for the next page, as long as one is needed. You can use the `X-Observe-Cursor-Id` and the `offset` and `numRows` parameters to construct your own next page URL with different page sizes.\n\nThe results can be returned as CSV or NDJSON. The query parameters are used to specify which page of results to fetch.\n* Set Accept header to `text/csv` or `application/x-ndjson`\n* Default: CSV\n\nThe number of rows in the full result set is returned in the X-Observe-Total-Rows response header.\n",
+        "parameters": [
+          {
+            "name": "cursorId",
+            "in": "query",
+            "description": "The ID of a cursor",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "examples": {
+              "A cursor id": {
+                "value": "123e4567-e89b-12d3-a456-426614174000"
+              }
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Offset into the result set for the page to begin at",
+            "schema": {
+              "type": "string",
+              "format": "int64"
+            },
+            "required": false,
+            "examples": {
+              "An offset": {
+                "value": 1000
+              }
+            }
+          },
+          {
+            "name": "numRows",
+            "in": "query",
+            "description": "The number of rows to return in the page",
+            "schema": {
+              "type": "string",
+              "format": "int64"
+            },
+            "required": false,
+            "examples": {
+              "A number of rows": {
+                "value": 1000
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The query is completed and the requested page of results are returned in the body in the format requested by the Accept header. The total number of rows in the full result set is returned in the X-Observe-Total-Rows response header.\n\n## Description of result data formats\n\n### Content-type: application/x-ndjson\nThe results are returned with each row represented as distinct json objects separated by newlines.\nThe contents of the json object representing each row is keys representing each column in the output, with values representing the value of that that column for that row.\n\n### Content-type: text/csv\nThe results are returned in csv format, the first row in csv is a header row with the names of the columns.\n",
+            "content": {
+              "application/x-ndjson": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "{\"timestamp\":\"2023-03-08T18:59:42.397994726Z\",\"log\":\"I0308 18:59:42.397931             60689787 apiserver/authorize.go:545] msg=\\\"VerifyAuthorization failed\\\" customer_id=999999999999 service=collector operation=2 token=\\\"xxxxxx... (hash h:xxxxxxx)\\\"\",\"namespace\":\"prod\",\"containerName\":\"collector\"}\n{\"timestamp\":\"2023-03-08T18:59:42.674391618Z\",\"log\":\"I0308 18:59:42.397945             60689787 httputil/helpers.go:70] serveStatusError(401): \\\"Unauthorized\\\"\",\"namespace\":\"prod\",\"containerName\":\"collector\"}\n"
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "\"timestamp\",\"log\",\"namespace\",\"containerName\"\n\"2023-03-08T18:59:42.397994726Z\",\"I0308 18:59:42.397931             60689787 apiserver/authorize.go:545] msg=\"\"VerifyAuthorization failed\"\" customer_id=999999999999 service=collector operation=2 token=\"\"xxxxxx... (hash h:xxxxxxx)\"\"\",\"prod\",\"collector\"\n\"2023-03-08T18:59:42.674391618Z\",\"I0308 18:59:42.397945             60689787 httputil/helpers.go:70] serveStatusError(401): \"\"Unauthorized\"\"\",\"prod\",\"collector\"\n"
+              }
+            },
+            "headers": {
+              "X-Observe-Next-Page": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "A link to the next page of results if there is one, otherwise this header is not present."
+              },
+              "X-Observe-Total-Rows": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "The number of rows in the full result set."
+              }
+            }
+          },
+          "202": {
+            "description": "The query is still in progress; even after waiting for 30 seconds from the request being recieved.\n\nThe body of the response will be empty.  The response headers contain the following:\n",
+            "headers": {
+              "X-Observe-Next-Page": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "A link to the first page of results."
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request."
+          }
+        }
+      }
+    },
+    "/v1/meta/export/worksheet/{worksheetId}": {
+      "post": {
+        "summary": "Export a worksheet",
+        "operationId": "exportWorksheet",
+        "tags": [
+          "Export"
+        ],
+        "description": "Export data used by a worksheet.\n\nResults can be returned as CSV or NDJSON.\n* Set Accept header to `text/csv` or `application/x-ndjson`\n* Default: CSV\n\n  Either two of `startTime`, `endTime`, and `interval` or `interval` alone can be specified to set the time interval. The `startTime` parameter is inclusive and the `endTime` parameter is exclusive, to prevent overlap from subsequent windows.\n\n* `interval`: An interval relative to now\n* `startTime` + `endTime`: The specified time interval\n* `startTime` **or** `endTime` + `interval`: The specified time interval relative to the provided start or end time\n",
+        "parameters": [
+          {
+            "name": "worksheetId",
+            "description": "ID of the worksheet to export.",
+            "in": "path",
+            "schema": {
+              "type": "integer"
+            },
+            "required": true,
+            "examples": {
+              "A worksheet ID": {
+                "value": "123456789"
+              }
+            }
+          },
+          {
+            "name": "startTime",
+            "in": "query",
+            "description": "Beginning of time window (inclusive) as ISO time.",
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "examples": {
+              "A start time": {
+                "value": "2023-04-20T16:20:00Z"
+              }
+            }
+          },
+          {
+            "name": "endTime",
+            "in": "query",
+            "description": "End of time window (exclusive) as ISO time. Defaults to now if just `interval` is specified.",
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "examples": {
+              "An end time": {
+                "value": "2023-04-20T16:30:00Z"
+              }
+            }
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "description": "Length of time window (if start or end is missing).",
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "examples": {
+              "An interval": {
+                "value": "10m",
+                "summary": "A duration in h / m / s units"
+              }
+            }
+          },
+          {
+            "name": "stage",
+            "in": "query",
+            "description": "Which stage to get the data from. Defaults to last stage.",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "## Description of result data formats\n\n### Content-type: application/x-ndjson\nThe results are returned with each row represented as distinct json objects separated by newlines.\nThe contents of the json object representing each row is keys representing each column in the output, with values representing the value of that that column for that row.\n\n### Content-type: text/csv\nThe results are returned in csv format, the first row in csv is a header row with the names of the columns.\n",
+            "content": {
+              "application/x-ndjson": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "{\"BUNDLE_ID\":\"3729\",\"BUNDLE_TIMESTAMP\":\"1695924000540747582\",\"DATASTREAM_ID\":\"41000006\",\"DATASTREAM_TOKEN_ID\":\"ds1thSTHMTVac5mLzmLv\",\"EXTRA\":{\"clusterUid\":\"bd89af7a-2ab9-42de-97da-0d5894354da6\",\"path\":\"/data/logs\"},\"FIELDS\":{\"field1\":\"value1\",\"field2\":\"value2\"},\"OBSERVATION_INDEX\":\"7\",\"OBSERVATION_KIND\":\"http\",\"_ob_datastream_token_id\":\"ds1thSTHMTVac5mLzmLv\"}\n{\"BUNDLE_ID\":\"3729\",\"BUNDLE_TIMESTAMP\":\"1695924000540747582\",\"DATASTREAM_ID\":\"41000006\",\"DATASTREAM_TOKEN_ID\":\"ds1thSTHMTVac5mLzmLv\",\"EXTRA\":{\"clusterUid\":\"bd89af7a-2ab9-42de-97da-0d5894354da6\",\"path\":\"/data/logs\"},\"FIELDS\":{\"field1\":\"value3\",\"field2\":\"value4\"},\"OBSERVATION_INDEX\":\"1\",\"OBSERVATION_KIND\":\"http\",\"_ob_datastream_token_id\":\"ds1thSTHMTVac5mLzmLv\"}\n"
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "\"BUNDLE_TIMESTAMP\",\"OBSERVATION_KIND\",\"FIELDS\",\"EXTRA\",\"BUNDLE_ID\",\"OBSERVATION_INDEX\",\"DATASTREAM_ID\",\"DATASTREAM_TOKEN_ID\",\"_ob_datastream_token_id\"\n\"1695924000540747582\",\"http\",\"{\"\"field1\"\":\"\"value1\"\",\"\"field2\"\":\"\"value2\"\"}\",\"{\"\"clusterUid\"\":\"\"bd89af7a-2ab9-42de-97da-0d5894354da6\"\",\"\"path\"\":\"\"/data/logs\"\"}\",\"3729\",\"7\",\"41000006\",\"ds1thSTHMTVac5mLzmLv\",\"ds1thSTHMTVac5mLzmLv\"\n\"1695924000540747582\",\"http\",\"{\"\"field1\"\":\"\"value3\"\",\"\"field2\"\":\"\"value4\"\"}\",\"{\"\"clusterUid\"\":\"\"bd89af7a-2ab9-42de-97da-0d5894354da6\"\",\"\"path\"\":\"\"/data/logs\"\"}\",\"3729\",\"1\",\"41000006\",\"ds1thSTHMTVac5mLzmLv\",\"ds1thSTHMTVac5mLzmLv\"\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request."
+          }
+        }
+      }
+    },
+    "/v1/dataset": {
+      "get": {
+        "summary": "List datasets (legacy)",
+        "operationId": "listDatasets",
+        "tags": [
+          "Dataset Legacy"
+        ],
+        "description": "List datasets, optionally matching:\n\n* Name substring\n* Workspace ID\n* Dataset type\n* Interface binding\n",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "description": "Only include datasets in this workspace.",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "required": false,
+            "examples": {
+              "A workspace ID": {
+                "value": "41000011"
+              }
+            }
+          },
+          {
+            "name": "match",
+            "in": "query",
+            "description": "Alphanumeric fuzzy match the name of the dataset.",
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "examples": {
+              "A name substring": {
+                "value": "logs"
+              }
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "description": "exact name of the dataset to match",
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "examples": {
+              "A dataset name`": {
+                "value": "kubernetes/Container Logs"
+              }
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Only include datasets of this type.",
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "examples": {
+              "A type": {
+                "value": "Event"
+              }
+            }
+          },
+          {
+            "name": "interface",
+            "in": "query",
+            "description": "Only include datasets that implement this interface.",
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "examples": {
+              "An interface": {
+                "value": "metric",
+                "summary": "A name of an interface. You can specify this more than once to include more datasets."
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "## A list of datasets\nThe list is a JSON array of objects, each object representing a dataset.\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "ListDatasetsResponse",
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DatasetLegacy-Resource"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "ok": true,
+                  "data": [
+                    {
+                      "meta": {
+                        "id": "o::101:dataset:40000068",
+                        "workspaceId": "40000058",
+                        "customerId": "101"
+                      },
+                      "config": {
+                        "name": "kubernetes/Container Logs"
+                      },
+                      "state": {
+                        "urlPath": "/workspace/40000058/dataset/event/40000068",
+                        "kind": "Event",
+                        "createdBy": "1",
+                        "createdDate": "2023-04-20T16:20:00Z",
+                        "updatedBy": "1",
+                        "updatedDate": "2023-04-20T16:20:00Z",
+                        "columns": [
+                          {
+                            "name": "BUNDLE_TIMESTAMP",
+                            "type": "timestamp"
+                          },
+                          {
+                            "name": "message",
+                            "type": "string"
+                          },
+                          {
+                            "name": "tags",
+                            "type": "object"
+                          }
+                        ],
+                        "interfaces": [
+                          "log"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request."
+          }
+        }
+      }
+    },
+    "/v1/dataset/{id}": {
+      "get": {
+        "summary": "Get a dataset (legacy)",
+        "operationId": "getDatasetById",
+        "tags": [
+          "Dataset Legacy"
+        ],
+        "description": "Get information about one dataset by id. Does not query the data inside the dataset.\n",
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The dataset id. Can be an ORN or a plain ID.",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "examples": {
+              "A dataset ID": {
+                "value": "40000068"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "## Properties of one dataset\n\nDataset properties, encoded as a JSON object.\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/DatasetLegacy-Resource"
+                    }
+                  }
+                },
+                "example": "{\n  \"ok\": true,\n  \"data\": {\n    \"meta\":{\"id\":\"o::101:dataset:40000068\",\"workspaceId\":\"40000058\",\"customerId\":\"101\"},\n    \"config\":{\"name\":\"kubernetes/Container Logs\"},\n    \"state\":{\n      \"urlPath\":\"/workspace/40000058/dataset/event/40000068\",\n      \"kind\":\"Event\",\n      \"createdBy\":\"1\",\n      \"createdDate\":\"2023-04-20T16:20:00Z\",\n      \"updatedBy\":\"1\",\n      \"updatedDate\":\"2023-04-20T16:20:00Z\"\n      \"columns\":[{\"name\":\"BUNDLE_TIMESTAMP\",\"type\":\"timestamp\"},{\"name\":\"message\",\"type\":\"string\"},{\"name\":\"tags\",\"type\":\"object\"}],\n      \"interfaces\":[\"log\"]\n    }\n  }\n}\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request."
+          }
+        }
+      }
+    },
+    "/v1/monitors/{id}": {
+      "get": {
+        "summary": "Get a MonitorV2",
+        "operationId": "getMonitor",
+        "tags": [
+          "Monitor"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "in": "path",
+            "description": "The Monitor object id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The object is returned\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonitorV2"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The object was not found"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update a MonitorV2",
+        "operationId": "updateMonitor",
+        "tags": [
+          "Monitor"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "in": "path",
+            "description": "The Monitor object id"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The object was updated\n"
+          },
+          "404": {
+            "description": "The object was not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a MonitorV2",
+        "operationId": "deleteMonitor",
+        "tags": [
+          "Monitor"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "in": "path",
+            "description": "The Monitor object id"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The object was deleted"
+          },
+          "400": {
+            "description": "Invalid request"
+          }
+        }
+      }
+    },
+    "/v1/monitors": {
+      "post": {
+        "summary": "Create a new MonitorV2 and bind to actions",
+        "operationId": "createMonitor",
+        "tags": [
+          "Monitor"
+        ],
+        "requestBody": {
+          "description": "The MonitorV2 to create",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonitorV2"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The monitor was created",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The URI to the newly created monitor"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonitorV2"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          }
+        }
+      },
+      "get": {
+        "summary": "List MonitorV2 instances with optional filters",
+        "operationId": "listMonitors",
+        "tags": [
+          "Monitor"
+        ],
+        "parameters": [
+          {
+            "name": "nameExact",
+            "in": "query",
+            "description": "limit to an exact string match",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "nameSubstring",
+            "in": "query",
+            "description": "limit to a substring match",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "An array of monitor objects is returned\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MonitorV2Terse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          }
+        }
+      }
+    },
+    "/v1/monitor-mute-rules/{id}": {
+      "get": {
+        "summary": "Get a MonitorV2 Mute Rule",
+        "operationId": "getMonitorMuteRule",
+        "tags": [
+          "Monitor"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "in": "path",
+            "description": "The Mute Rule object id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The object is returned\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonitorV2MuteRule"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The object was not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a MonitorV2 Mute Rule",
+        "operationId": "deleteMonitorMuteRule",
+        "tags": [
+          "Monitor"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "in": "path",
+            "description": "The Mute Rule object id"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The object was deleted"
+          },
+          "400": {
+            "description": "Invalid request"
+          }
+        }
+      }
+    },
+    "/v1/monitor-mute-rules": {
+      "post": {
+        "summary": "Create a new MonitorV2 Mute Rule",
+        "operationId": "createMonitorMuteRule",
+        "tags": [
+          "Monitor"
+        ],
+        "requestBody": {
+          "description": "The MonitorV2 Mute Rule to create",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonitorV2MuteRule"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The mute rule was created",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The URI to the newly created mute rule"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonitorV2MuteRule"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          }
+        }
+      },
+      "get": {
+        "summary": "List MonitorV2 Mute Rules with optional filters",
+        "operationId": "listMonitorMuteRules",
+        "tags": [
+          "Monitor"
+        ],
+        "parameters": [
+          {
+            "name": "nameExact",
+            "in": "query",
+            "description": "limit to an exact string match",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "nameSubstring",
+            "in": "query",
+            "description": "limit to a substring match",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "An array of mute rule objects is returned\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MonitorV2MuteRuleTerse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          }
+        }
+      }
+    },
+    "/v1/referencetables/{id}": {
+      "get": {
+        "summary": "Get a reference table",
+        "description": "Retrieve a specific reference table by ID.",
+        "operationId": "GetReferenceTable",
+        "tags": [
+          "ReferenceTables"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved reference table",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenceTables-Table"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse-400"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse-401"
+          },
+          "403": {
+            "$ref": "#/components/responses/ErrorResponse-403"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse-404"
+          },
+          "429": {
+            "$ref": "#/components/responses/ErrorResponse-429"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/ErrorResponse-5XX"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "ReferenceTables"
+        ],
+        "summary": "Update metadata of a reference table",
+        "description": "Updates the metadata of a reference table with the specified ID.",
+        "operationId": "UpdateReferenceTableMetadata",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferenceTables-TableMetadataPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully updated reference table metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenceTables-Table"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse-400"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse-401"
+          },
+          "403": {
+            "$ref": "#/components/responses/ErrorResponse-403"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse-404"
+          },
+          "429": {
+            "$ref": "#/components/responses/ErrorResponse-429"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/ErrorResponse-5XX"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a reference table",
+        "description": "Deletes a reference table with the specified ID.",
+        "operationId": "DeleteReferenceTable",
+        "tags": [
+          "ReferenceTables"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully deleted reference table",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Success message"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse-400"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse-401"
+          },
+          "403": {
+            "$ref": "#/components/responses/ErrorResponse-403"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse-404"
+          },
+          "429": {
+            "$ref": "#/components/responses/ErrorResponse-429"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/ErrorResponse-5XX"
+          }
+        }
+      },
+      "put": {
+        "summary": "Replace a reference table",
+        "description": "Replaces a reference table with the specified ID.",
+        "operationId": "UpdateReferenceTable",
+        "tags": [
+          "ReferenceTables"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "metadata": {
+                    "$ref": "#/components/schemas/ReferenceTables-TableMetadata"
+                  },
+                  "upload": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "CSV file containing the data"
+                  },
+                  "schema": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "JSON file specifying the schema (optional)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully replaced reference table",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Success message"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse-400"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse-401"
+          },
+          "403": {
+            "$ref": "#/components/responses/ErrorResponse-403"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse-404"
+          },
+          "429": {
+            "$ref": "#/components/responses/ErrorResponse-429"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/ErrorResponse-5XX"
+          }
+        }
+      }
+    },
+    "/v1/referencetables": {
+      "get": {
+        "summary": "Query reference tables",
+        "description": "Search for reference tables with optional filters (label, createdBy) and pagination.",
+        "operationId": "QueryReferenceTables",
+        "tags": [
+          "ReferenceTables"
+        ],
+        "parameters": [
+          {
+            "name": "label",
+            "in": "query",
+            "required": false,
+            "description": "Name of the reference table to search for (supports substring match).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "createdBy",
+            "in": "query",
+            "required": false,
+            "description": "Filter by the user who created the reference tables.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "The maximum number of items to return per page.",
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "The index of the first item to return (pagination offset).",
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully queried reference tables",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "totalCount": {
+                      "type": "integer",
+                      "description": "Total number of reference tables available, independent of pagination",
+                      "example": 100
+                    },
+                    "referenceTables": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ReferenceTables-Table"
+                      },
+                      "description": "List of reference tables that match the query and pagination filters"
+                    }
+                  },
+                  "required": [
+                    "totalCount",
+                    "referenceTables"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse-400"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse-401"
+          },
+          "403": {
+            "$ref": "#/components/responses/ErrorResponse-403"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse-404"
+          },
+          "429": {
+            "$ref": "#/components/responses/ErrorResponse-429"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/ErrorResponse-5XX"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new reference table",
+        "description": "Creates a new reference table with the specified parameters and uploaded data.",
+        "operationId": "CreateReferenceTable",
+        "tags": [
+          "ReferenceTables"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "metadata": {
+                    "$ref": "#/components/schemas/ReferenceTables-TableMetadata"
+                  },
+                  "upload": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "CSV file containing the data"
+                  },
+                  "schema": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "JSON file specifying the schema (optional)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successfully created reference table",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenceTables-Table"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse-400"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse-401"
+          },
+          "403": {
+            "$ref": "#/components/responses/ErrorResponse-403"
+          },
+          "429": {
+            "$ref": "#/components/responses/ErrorResponse-429"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/ErrorResponse-5XX"
+          }
+        }
+      }
+    },
+    "/v1/service-accounts": {
+      "get": {
+        "x-badges": [
+          {
+            "name": "beta",
+            "position": "before",
+            "color": "#FFCC00"
+          }
+        ],
+        "summary": "Get a list of service accounts",
+        "description": "Get a list of all service accounts",
+        "operationId": "ListServiceAccounts",
+        "tags": [
+          "ServiceAccounts"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ExpandParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service account queried successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceAccount-ListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse-400"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse-401"
+          },
+          "403": {
+            "$ref": "#/components/responses/ErrorResponse-403"
+          },
+          "429": {
+            "$ref": "#/components/responses/ErrorResponse-429"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/ErrorResponse-5XX"
+          }
+        }
+      },
+      "post": {
+        "x-badges": [
+          {
+            "name": "beta",
+            "position": "before",
+            "color": "#FFCC00"
+          }
+        ],
+        "summary": "Create a service account",
+        "operationId": "CreateServiceAccount",
+        "tags": [
+          "ServiceAccounts"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ExpandParam"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceAccount-CreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Service account created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceAccount-Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse-400"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse-401"
+          },
+          "403": {
+            "$ref": "#/components/responses/ErrorResponse-403"
+          },
+          "429": {
+            "$ref": "#/components/responses/ErrorResponse-429"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/ErrorResponse-5XX"
+          }
+        }
+      }
+    },
+    "/v1/service-accounts/{accountId}": {
+      "get": {
+        "x-badges": [
+          {
+            "name": "beta",
+            "position": "before",
+            "color": "#FFCC00"
+          }
+        ],
+        "summary": "Get a service account",
+        "description": "Retrieve a specific service account by ID",
+        "operationId": "GetServiceAccount",
+        "tags": [
+          "ServiceAccounts"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountId",
+            "schema": {
+              "type": "string",
+              "format": "int64"
+            },
+            "required": true,
+            "description": "The id of the service account",
+            "example": 1
+          },
+          {
+            "$ref": "#/components/parameters/ExpandParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service account queried successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceAccount-Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse-400"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse-401"
+          },
+          "403": {
+            "$ref": "#/components/responses/ErrorResponse-403"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse-404"
+          },
+          "429": {
+            "$ref": "#/components/responses/ErrorResponse-429"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/ErrorResponse-5XX"
+          }
+        }
+      },
+      "patch": {
+        "x-badges": [
+          {
+            "name": "beta",
+            "position": "before",
+            "color": "#FFCC00"
+          }
+        ],
+        "summary": "Update a service account",
+        "operationId": "UpdateServiceAccount",
+        "tags": [
+          "ServiceAccounts"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountId",
+            "schema": {
+              "type": "string",
+              "format": "int64"
+            },
+            "required": true,
+            "description": "The id of the service account to update",
+            "example": 1
+          },
+          {
+            "$ref": "#/components/parameters/ExpandParam"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceAccount-UpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Service account updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceAccount-Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse-400"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse-401"
+          },
+          "403": {
+            "$ref": "#/components/responses/ErrorResponse-403"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse-404"
+          },
+          "429": {
+            "$ref": "#/components/responses/ErrorResponse-429"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/ErrorResponse-5XX"
+          }
+        }
+      },
+      "delete": {
+        "x-badges": [
+          {
+            "name": "beta",
+            "position": "before",
+            "color": "#FFCC00"
+          }
+        ],
+        "summary": "Delete a service account",
+        "operationId": "DeleteServiceAccount",
+        "tags": [
+          "ServiceAccounts"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountId",
+            "schema": {
+              "type": "string",
+              "format": "int64"
+            },
+            "required": true,
+            "description": "The id of the service account to delete",
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service account deleted successfully"
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse-400"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse-401"
+          },
+          "403": {
+            "$ref": "#/components/responses/ErrorResponse-403"
+          },
+          "429": {
+            "$ref": "#/components/responses/ErrorResponse-429"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/ErrorResponse-5XX"
+          }
+        }
+      }
+    },
+    "/v1/service-accounts/{accountId}/api-tokens": {
+      "get": {
+        "x-badges": [
+          {
+            "name": "beta",
+            "position": "before",
+            "color": "#FFCC00"
+          }
+        ],
+        "summary": "Get a list of API tokens for this service account",
+        "description": "Get a list of all API tokens for this service account",
+        "operationId": "ListApiTokens",
+        "tags": [
+          "ServiceAccounts"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountId",
+            "schema": {
+              "type": "string",
+              "format": "int64"
+            },
+            "required": true,
+            "description": "The id of the service account associated with the API token",
+            "example": 1
+          },
+          {
+            "$ref": "#/components/parameters/ExpandParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "API tokens queried successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiToken-ListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse-400"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse-401"
+          },
+          "403": {
+            "$ref": "#/components/responses/ErrorResponse-403"
+          },
+          "429": {
+            "$ref": "#/components/responses/ErrorResponse-429"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/ErrorResponse-5XX"
+          }
+        }
+      },
+      "post": {
+        "x-badges": [
+          {
+            "name": "beta",
+            "position": "before",
+            "color": "#FFCC00"
+          }
+        ],
+        "summary": "Create an API token",
+        "operationId": "CreateApiToken",
+        "tags": [
+          "ServiceAccounts"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountId",
+            "schema": {
+              "type": "string",
+              "format": "int64"
+            },
+            "required": true,
+            "description": "The id of the service account associated with the API token",
+            "example": 1
+          },
+          {
+            "$ref": "#/components/parameters/ExpandParam"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiToken-CreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "API token created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiToken-Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse-400"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse-401"
+          },
+          "403": {
+            "$ref": "#/components/responses/ErrorResponse-403"
+          },
+          "429": {
+            "$ref": "#/components/responses/ErrorResponse-429"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/ErrorResponse-5XX"
+          }
+        }
+      }
+    },
+    "/v1/service-accounts/{accountId}/api-tokens/{tokenId}": {
+      "get": {
+        "x-badges": [
+          {
+            "name": "beta",
+            "position": "before",
+            "color": "#FFCC00"
+          }
+        ],
+        "summary": "Get an API token",
+        "description": "Retrieve a specific API token by ID",
+        "operationId": "GetApiToken",
+        "tags": [
+          "ServiceAccounts"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountId",
+            "schema": {
+              "type": "string",
+              "format": "int64"
+            },
+            "required": true,
+            "description": "The id of the service account associated with the API token",
+            "example": 1
+          },
+          {
+            "in": "path",
+            "name": "tokenId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The id of the API token to update",
+            "example": 1
+          },
+          {
+            "$ref": "#/components/parameters/ExpandParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "API token queried successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiToken-Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse-400"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse-401"
+          },
+          "403": {
+            "$ref": "#/components/responses/ErrorResponse-403"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse-404"
+          },
+          "429": {
+            "$ref": "#/components/responses/ErrorResponse-429"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/ErrorResponse-5XX"
+          }
+        }
+      },
+      "patch": {
+        "x-badges": [
+          {
+            "name": "beta",
+            "position": "before",
+            "color": "#FFCC00"
+          }
+        ],
+        "summary": "Update an API token",
+        "operationId": "UpdateApiToken",
+        "tags": [
+          "ServiceAccounts"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountId",
+            "schema": {
+              "type": "string",
+              "format": "int64"
+            },
+            "required": true,
+            "description": "The id of the service account associated with the API token",
+            "example": 1
+          },
+          {
+            "in": "path",
+            "name": "tokenId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The id of the API token to update",
+            "example": 1
+          },
+          {
+            "$ref": "#/components/parameters/ExpandParam"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiToken-UpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "API token updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiToken-Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse-400"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse-401"
+          },
+          "403": {
+            "$ref": "#/components/responses/ErrorResponse-403"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse-404"
+          },
+          "429": {
+            "$ref": "#/components/responses/ErrorResponse-429"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/ErrorResponse-5XX"
+          }
+        }
+      },
+      "delete": {
+        "x-badges": [
+          {
+            "name": "beta",
+            "position": "before",
+            "color": "#FFCC00"
+          }
+        ],
+        "summary": "Delete an API token",
+        "operationId": "DeleteApiToken",
+        "tags": [
+          "ServiceAccounts"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountId",
+            "schema": {
+              "type": "string",
+              "format": "int64"
+            },
+            "required": true,
+            "description": "The id of the service account associated with the API token",
+            "example": 1
+          },
+          {
+            "in": "path",
+            "name": "tokenId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The id of the API token to update",
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "API token deleted successfully"
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse-400"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse-401"
+          },
+          "403": {
+            "$ref": "#/components/responses/ErrorResponse-403"
+          },
+          "429": {
+            "$ref": "#/components/responses/ErrorResponse-429"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/ErrorResponse-5XX"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Authorization: Bearer <customerid> <apitoken>\n"
+      }
+    },
+    "schemas": {
+      "InputDefinition": {
+        "type": "object",
+        "required": [
+          "inputName"
+        ],
+        "properties": {
+          "inputName": {
+            "description": "The @name used to reference this input in OPAL (without the @ sign)",
+            "type": "string"
+          },
+          "inputRole": {
+            "description": "Data or Reference, defaults to Data if not specified.",
+            "type": "string"
+          },
+          "datasetId": {
+            "description": "The dataset ID (as int64-string) to bind to this name.",
+            "type": "string",
+            "format": "int64"
+          },
+          "datasetPath": {
+            "description": "The dataset name as Workspace.path/Name to bind to this name, if not using datasetId.",
+            "type": "string"
+          },
+          "stageId": {
+            "description": "The stageID of the previously defined stage to reference, if it's a stage and not a dataset.",
+            "type": "string"
+          },
+          "parameterId": {
+            "description": "The parameter ID to take the input dataset reference from. (Advanced usage only)",
+            "type": "string"
+          }
+        }
+      },
+      "ParameterArray": {
+        "description": "Parameters defined for $variables (used for default values)",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "id",
+            "valueKind",
+            "defaultValue"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "defaultValue": {
+              "type": "object",
+              "properties": {
+                "bool": {
+                  "type": "boolean"
+                },
+                "float64": {
+                  "type": "number"
+                },
+                "int64": {
+                  "type": "string",
+                  "format": "int64"
+                },
+                "string": {
+                  "type": "string"
+                },
+                "timestamp": {
+                  "type": "string"
+                },
+                "duration": {
+                  "type": "string"
+                },
+                "nullValueType": {
+                  "type": "string"
+                }
+              }
+            },
+            "valueKind": {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ParameterValueArray": {
+        "description": "Parameter values bound for $variables for this execution.",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "id",
+            "value"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "value": {
+              "type": "object",
+              "properties": {
+                "bool": {
+                  "type": "boolean"
+                },
+                "float64": {
+                  "type": "number"
+                },
+                "int64": {
+                  "type": "string",
+                  "format": "int64"
+                },
+                "string": {
+                  "type": "string"
+                },
+                "timestamp": {
+                  "type": "string"
+                },
+                "duration": {
+                  "type": "string"
+                },
+                "nullValueType": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "StagePresentationInput": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "string",
+            "format": "int64"
+          },
+          "linkify": {
+            "description": "Turn foreign keys into joined-name columns.",
+            "type": "boolean"
+          },
+          "wantBuckets": {
+            "description": "How many timechart / aggregate buckets to use by default.",
+            "type": "string",
+            "format": "int64"
+          },
+          "orderColumns": {
+            "description": "How to order the output data.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "columnName"
+              ],
+              "properties": {
+                "columnName": {
+                  "type": "string"
+                },
+                "ascending": {
+                  "type": "boolean"
+                },
+                "nullOrdering": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      },
+      "DatasetLegacy-Resource": {
+        "type": "object",
+        "required": [
+          "meta",
+          "config",
+          "state"
+        ],
+        "properties": {
+          "meta": {
+            "type": "object",
+            "description": "Metadata about the dataset.",
+            "required": [
+              "id",
+              "workspaceId",
+              "customerId"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "workspaceId": {
+                "type": "string",
+                "format": "int64"
+              },
+              "customerId": {
+                "type": "string",
+                "format": "int64"
+              }
+            }
+          },
+          "config": {
+            "description": "Directly settable properties of the dataset.",
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            }
+          },
+          "state": {
+            "description": "Implicitly derived state of the dataset.",
+            "type": "object",
+            "required": [
+              "urlPath",
+              "kind",
+              "createdBy",
+              "createdDate",
+              "updatedBy",
+              "updatedDate"
+            ],
+            "properties": {
+              "urlPath": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "createdBy": {
+                "type": "string",
+                "format": "int64"
+              },
+              "createdDate": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedBy": {
+                "type": "string",
+                "format": "int64"
+              },
+              "updatedDate": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "columns": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "name",
+                    "type"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "interfaces": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "mapping": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "ObjectId": {
+        "type": "string",
+        "format": "ObjectId"
+      },
+      "MonitorV2RuleKind": {
+        "type": "string",
+        "enum": [
+          "Count",
+          "Promote",
+          "Threshold"
+        ]
+      },
+      "StageQuery": {
+        "type": "object",
+        "required": [
+          "input",
+          "pipeline"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "input": {
+            "$ref": "#/components/schemas/InputDefinition"
+          },
+          "pipeline": {
+            "type": "string"
+          }
+        }
+      },
+      "MultiStageQuery": {
+        "type": "object",
+        "required": [
+          "outputStage",
+          "stages"
+        ],
+        "properties": {
+          "outputStage": {
+            "type": "string"
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StageQuery"
+            }
+          }
+        }
+      },
+      "MonitorV2AlarmLevel": {
+        "type": "string",
+        "enum": [
+          "Critical",
+          "Error",
+          "Informational",
+          "None",
+          "Warning"
+        ]
+      },
+      "MonitorV2ComparisonFunction": {
+        "type": "string",
+        "enum": [
+          "Contains",
+          "Equal",
+          "Greater",
+          "GreaterOrEqual",
+          "Less",
+          "LessOrEqual",
+          "NotContains",
+          "NotEqual",
+          "NotStartsWith",
+          "StartsWith"
+        ]
+      },
+      "TimeNano": {
+        "type": "string",
+        "format": "RFC3339Nano"
+      },
+      "DurationNanoseconds": {
+        "type": "string",
+        "format": "int64 nanoseconds"
+      },
+      "PrimitiveValue": {
+        "properties": {
+          "bool": {
+            "type": "boolean"
+          },
+          "float64": {
+            "type": "number",
+            "format": "double"
+          },
+          "int64": {
+            "type": "string",
+            "format": "int64"
+          },
+          "string": {
+            "type": "string"
+          },
+          "timestamp": {
+            "$ref": "#/components/schemas/TimeNano"
+          },
+          "duration": {
+            "$ref": "#/components/schemas/DurationNanoseconds"
+          },
+          "array": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrimitiveValue"
+            }
+          },
+          "link": {
+            "type": "object",
+            "properties": {
+              "datasetId": {
+                "$ref": "#/components/schemas/ObjectId"
+              },
+              "primaryKeyValue": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "storedLabel": {
+                "type": "string"
+              }
+            }
+          },
+          "datasetref": {
+            "type": "object",
+            "properties": {
+              "datasetId": {
+                "$ref": "#/components/schemas/ObjectId"
+              },
+              "datasetPath": {
+                "type": "string"
+              },
+              "stageId": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "MonitorV2Comparison": {
+        "properties": {
+          "compareFn": {
+            "$ref": "#/components/schemas/MonitorV2ComparisonFunction"
+          },
+          "compareValue": {
+            "$ref": "#/components/schemas/PrimitiveValue"
+          }
+        }
+      },
+      "MonitorV2ColumnPath": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "MonitorV2LinkColumn": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "srcFields": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/MonitorV2ColumnPath"
+                }
+              },
+              "dstFields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "targetDataset": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ObjectId"
+                }
+              }
+            }
+          }
+        }
+      },
+      "MonitorV2Column": {
+        "properties": {
+          "linkColumn": {
+            "$ref": "#/components/schemas/MonitorV2LinkColumn"
+          },
+          "columnPath": {
+            "$ref": "#/components/schemas/MonitorV2ColumnPath"
+          }
+        }
+      },
+      "MonitorV2ColumnComparison": {
+        "properties": {
+          "compareValues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonitorV2Comparison"
+            }
+          },
+          "column": {
+            "$ref": "#/components/schemas/MonitorV2Column"
+          }
+        }
+      },
+      "MonitorV2CountRule": {
+        "type": "object",
+        "required": [
+          "compareValues"
+        ],
+        "properties": {
+          "compareValues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonitorV2Comparison"
+            }
+          },
+          "compareGroups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonitorV2ColumnComparison"
+            }
+          }
+        }
+      },
+      "MonitorV2ValueAggregation": {
+        "type": "string",
+        "enum": [
+          "AllOf",
+          "AnyOf",
+          "AvgOf",
+          "SumOf"
+        ]
+      },
+      "MonitorV2ThresholdRule": {
+        "type": "object",
+        "required": [
+          "compareValues",
+          "valueColumnName",
+          "aggregation"
+        ],
+        "properties": {
+          "compareValues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonitorV2Comparison"
+            }
+          },
+          "valueColumnName": {
+            "type": "string"
+          },
+          "aggregation": {
+            "$ref": "#/components/schemas/MonitorV2ValueAggregation"
+          },
+          "compareGroups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonitorV2ColumnComparison"
+            }
+          }
+        }
+      },
+      "MonitorV2PromoteRule": {
+        "type": "object",
+        "properties": {
+          "compareColumns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonitorV2ColumnComparison"
+            }
+          }
+        }
+      },
+      "MonitorV2Rule": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "$ref": "#/components/schemas/MonitorV2AlarmLevel"
+          },
+          "count": {
+            "$ref": "#/components/schemas/MonitorV2CountRule"
+          },
+          "threshold": {
+            "$ref": "#/components/schemas/MonitorV2ThresholdRule"
+          },
+          "promote": {
+            "$ref": "#/components/schemas/MonitorV2PromoteRule"
+          }
+        }
+      },
+      "MonitorV2TransformSchedule": {
+        "type": "object",
+        "properties": {
+          "freshnessGoal": {
+            "$ref": "#/components/schemas/DurationNanoseconds"
+          }
+        }
+      },
+      "MonitorV2Scheduling": {
+        "type": "object",
+        "properties": {
+          "transform": {
+            "$ref": "#/components/schemas/MonitorV2TransformSchedule"
+          }
+        }
+      },
+      "MonitorV2Definition": {
+        "type": "object",
+        "required": [
+          "inputQuery",
+          "rules"
+        ],
+        "properties": {
+          "inputQuery": {
+            "$ref": "#/components/schemas/MultiStageQuery"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonitorV2Rule"
+            }
+          },
+          "lookbackTime": {
+            "$ref": "#/components/schemas/DurationNanoseconds"
+          },
+          "dataStabilizationDelay": {
+            "$ref": "#/components/schemas/DurationNanoseconds"
+          },
+          "maxAlertsPerHour": {
+            "type": "integer"
+          },
+          "groupings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonitorV2Column"
+            }
+          },
+          "scheduling": {
+            "$ref": "#/components/schemas/MonitorV2Scheduling"
+          }
+        }
+      },
+      "MonitorV2BooleanOperator": {
+        "type": "string",
+        "enum": [
+          "And",
+          "Or"
+        ]
+      },
+      "MonitorV2ComparisonExpression": {
+        "type": "object",
+        "properties": {
+          "operator": {
+            "$ref": "#/components/schemas/MonitorV2BooleanOperator"
+          },
+          "subExpressions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonitorV2ComparisonExpression"
+            }
+          },
+          "compareTerms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonitorV2ComparisonTerm"
+            }
+          }
+        }
+      },
+      "MonitorV2ComparisonTerm": {
+        "type": "object",
+        "required": [
+          "comparison",
+          "column"
+        ],
+        "properties": {
+          "comparison": {
+            "$ref": "#/components/schemas/MonitorV2Comparison"
+          },
+          "column": {
+            "$ref": "#/components/schemas/MonitorV2Column"
+          }
+        }
+      },
+      "MonitorV2ActionType": {
+        "type": "string",
+        "enum": [
+          "Email",
+          "PagerDuty",
+          "Slack",
+          "Webhook"
+        ]
+      },
+      "MonitorV2EmailAction": {
+        "type": "object",
+        "required": [
+          "subject"
+        ],
+        "properties": {
+          "users": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          },
+          "addresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "subject": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "fragments": {
+            "type": "object"
+          }
+        }
+      },
+      "MonitorV2HttpType": {
+        "type": "string",
+        "description": "The http type describes the method or verb to use in http webhooks.\nnote: As a convenience, the values POST and PUT will be accepted, but converted\nto the enumeration values Post and Put respectively.\n",
+        "enum": [
+          "Post",
+          "Put"
+        ]
+      },
+      "MonitorV2WebhookHeader": {
+        "type": "object",
+        "required": [
+          "header",
+          "value"
+        ],
+        "properties": {
+          "header": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "MonitorV2WebhookAction": {
+        "type": "object",
+        "required": [
+          "url",
+          "method",
+          "body"
+        ],
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "method": {
+            "$ref": "#/components/schemas/MonitorV2HttpType"
+          },
+          "headers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonitorV2WebhookHeader"
+            }
+          },
+          "body": {
+            "type": "string"
+          },
+          "fragments": {
+            "type": "object"
+          }
+        }
+      },
+      "MonitorV2ActionDefinition": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "inline": {
+            "type": "boolean"
+          },
+          "type:": {
+            "$ref": "#/components/schemas/MonitorV2ActionType"
+          },
+          "email": {
+            "$ref": "#/components/schemas/MonitorV2EmailAction"
+          },
+          "webhook": {
+            "$ref": "#/components/schemas/MonitorV2WebhookAction"
+          }
+        }
+      },
+      "MonitorV2ActionRule": {
+        "type": "object",
+        "description": "Either the actionId or the definition must be present when setting.\nThe actionId references an existing shared action, while the\ndefinition would be used to configure an inline (private to a monitor)\naction.\n",
+        "properties": {
+          "actionId": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "levels": {
+            "$ref": "#/components/schemas/MonitorV2AlarmLevel"
+          },
+          "conditions": {
+            "$ref": "#/components/schemas/MonitorV2ComparisonExpression"
+          },
+          "sendEndNotifications": {
+            "type": "boolean"
+          },
+          "sendRemindersInterval": {
+            "type": "boolean"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/MonitorV2ActionDefinition"
+          }
+        }
+      },
+      "MonitorV2": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "definition",
+          "ruleKind"
+        ],
+        "properties": {
+          "id": {
+            "readOnly": true,
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "name": {
+            "type": "string"
+          },
+          "disabled": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "ruleKind": {
+            "$ref": "#/components/schemas/MonitorV2RuleKind"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/MonitorV2Definition"
+          },
+          "actionRules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonitorV2ActionRule"
+            }
+          }
+        }
+      },
+      "MonitorV2Terse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "disabled": {
+            "type": "boolean"
+          },
+          "monitorVersion": {
+            "type": "integer"
+          },
+          "ruleKind": {
+            "$ref": "#/components/schemas/MonitorV2RuleKind"
+          }
+        }
+      },
+      "MonitorV2MuteScheduleType": {
+        "type": "string",
+        "enum": [
+          "OneTime"
+        ]
+      },
+      "Time": {
+        "type": "string",
+        "format": "RFC3339"
+      },
+      "MonitorV2OneTimeMuteSchedule": {
+        "type": "object",
+        "required": [
+          "startTime"
+        ],
+        "properties": {
+          "startTime": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "endTime": {
+            "$ref": "#/components/schemas/Time"
+          }
+        }
+      },
+      "MonitorV2MuteRuleSchedule": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/MonitorV2MuteScheduleType"
+          },
+          "oneTime": {
+            "$ref": "#/components/schemas/MonitorV2OneTimeMuteSchedule"
+          }
+        }
+      },
+      "MonitorV2MuteRule": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "schedule",
+          "validFrom"
+        ],
+        "properties": {
+          "schedule": {
+            "$ref": "#/components/schemas/MonitorV2MuteRuleSchedule"
+          },
+          "criteria": {
+            "$ref": "#/components/schemas/MonitorV2ComparisonExpression"
+          },
+          "validFrom": {
+            "readOnly": true,
+            "$ref": "#/components/schemas/Time"
+          },
+          "validTo": {
+            "readOnly": true,
+            "$ref": "#/components/schemas/Time"
+          },
+          "monitorID": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "monitor": {
+            "type": "object",
+            "readOnly": true,
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/ObjectId"
+              },
+              "name": {
+                "type": "string"
+              }
+            }
+          },
+          "id": {
+            "readOnly": true,
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "name": {
+            "type": "string"
+          },
+          "isGlobal": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "isConditional": {
+            "type": "boolean",
+            "readOnly": true
+          }
+        }
+      },
+      "MonitorV2MuteRuleScheduleTerse": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/MonitorV2MuteScheduleType"
+          }
+        }
+      },
+      "MonitorV2MuteRuleTerse": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "schedule",
+          "validFrom"
+        ],
+        "properties": {
+          "schedule": {
+            "$ref": "#/components/schemas/MonitorV2MuteRuleScheduleTerse"
+          },
+          "validFrom": {
+            "readOnly": true,
+            "$ref": "#/components/schemas/Time"
+          },
+          "validTo": {
+            "readOnly": true,
+            "$ref": "#/components/schemas/Time"
+          },
+          "monitorID": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "id": {
+            "readOnly": true,
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "name": {
+            "type": "string"
+          },
+          "isGlobal": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "isConditional": {
+            "type": "boolean",
+            "readOnly": true
+          }
+        }
+      },
+      "User": {
+        "title": "User",
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "title": "User Identifier",
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "label": {
+            "title": "User Label",
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string"
+          }
+        }
+      },
+      "ReferenceTables-Table": {
+        "title": "ReferenceTable",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "int64"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "iconUrl": {
+            "type": "string"
+          },
+          "managedById": {
+            "type": "string",
+            "format": "int64"
+          },
+          "customerId": {
+            "type": "string",
+            "format": "int64"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/User"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedBy": {
+            "$ref": "#/components/schemas/User"
+          },
+          "datasetId": {
+            "type": "string",
+            "format": "int64"
+          },
+          "checksum": {
+            "type": "string"
+          },
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "The name of the field"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the field (e.g., string, float64, array)"
+                }
+              },
+              "required": [
+                "name",
+                "type"
+              ]
+            },
+            "description": "The schema definition of the reference table"
+          },
+          "primaryKey": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The primary key columns of the reference table"
+          },
+          "labelField": {
+            "type": "string",
+            "description": "The field that should be used for the OPAL label"
+          }
+        }
+      },
+      "ErrorMessage": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Error message"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "ReferenceTables-TableMetadata": {
+        "title": "ReferenceTableMetadata",
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "The label of the reference table."
+          },
+          "description": {
+            "type": "string",
+            "default": "",
+            "description": "The description of the reference table."
+          },
+          "primaryKey": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The primary key of the reference table."
+          },
+          "labelField": {
+            "type": "string",
+            "description": "The field that should be used for the OPAL label."
+          }
+        },
+        "required": [
+          "label"
+        ]
+      },
+      "ReferenceTables-TableMetadataPatch": {
+        "title": "ReferenceTableMetadataPatch",
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "The label of the reference table."
+          },
+          "description": {
+            "type": "string",
+            "description": "The description of the reference table."
+          }
+        }
+      },
+      "RbacGroupRef": {
+        "title": "RbacGroupRef",
+        "description": "Reference to an RBAC group, including id, label, and description.",
+        "type": "object",
+        "required": [
+          "id",
+          "legacyId",
+          "label",
+          "description"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "legacyId": {
+            "type": "string",
+            "description": "Deprecated. For compatibility with legacy APIs.",
+            "deprecated": true
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "ServiceAccount-Resource": {
+        "title": "ServiceAccountObject",
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "description",
+          "createdBy",
+          "createdAt",
+          "updatedBy",
+          "updatedAt",
+          "disabled"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/User"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "updatedBy": {
+            "$ref": "#/components/schemas/User"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "disabled": {
+            "type": "boolean",
+            "description": "Whether the service account is disabled. Disabling a service account will delete all of its API tokens."
+          },
+          "apiTokenCount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Number of API tokens for this service account. Includes recently expired and disabled tokens. Only populated when the expand query parameter is set to true."
+          },
+          "rbacGroups": {
+            "type": "array",
+            "description": "RBAC groups this service account belongs to. Only populated when the expand query parameter is set to true.",
+            "items": {
+              "$ref": "#/components/schemas/RbacGroupRef"
+            }
+          }
+        }
+      },
+      "Meta": {
+        "description": "List Response Metadata",
+        "type": "object",
+        "required": [
+          "totalCount"
+        ],
+        "properties": {
+          "totalCount": {
+            "description": "The total number of resources available, independent of pagination.\nThe API may return -1 if the total count is unknown or cannot be computed\nin reasonable time.\n",
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ServiceAccount-ListResponse": {
+        "title": "ServiceAccountListResponse",
+        "type": "object",
+        "required": [
+          "serviceAccounts",
+          "meta"
+        ],
+        "properties": {
+          "serviceAccounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceAccount-Resource"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ServiceAccount-CreateRequest": {
+        "title": "ServiceAccountCreateRequest",
+        "type": "object",
+        "required": [
+          "label"
+        ],
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "ServiceAccount-UpdateRequest": {
+        "title": "ServiceAccountUpdateRequest",
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "disabled": {
+            "type": "boolean",
+            "description": "Whether the service account is disabled. Disabling a service account will delete all of its API tokens."
+          }
+        }
+      },
+      "ApiToken-Resource": {
+        "title": "ApiTokenObject",
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "description",
+          "expiration",
+          "createdBy",
+          "createdAt",
+          "updatedBy",
+          "updatedAt",
+          "disabled"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "expiration": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/User"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "updatedBy": {
+            "$ref": "#/components/schemas/User"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "disabled": {
+            "type": "boolean"
+          },
+          "secret": {
+            "type": "string",
+            "description": "The secret for the API token. Only returned on create."
+          }
+        }
+      },
+      "ApiToken-ListResponse": {
+        "title": "ApiTokenListResponse",
+        "type": "object",
+        "required": [
+          "apiTokens",
+          "meta"
+        ],
+        "properties": {
+          "apiTokens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiToken-Resource"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiToken-CreateRequest": {
+        "title": "ApiTokenCreateRequest",
+        "type": "object",
+        "required": [
+          "label",
+          "lifetimeHours"
+        ],
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "lifetimeHours": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "ApiToken-UpdateRequest": {
+        "title": "ApiTokenUpdateRequest",
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "lifetimeHours": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "disabled": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "responses": {
+      "ErrorResponse-400": {
+        "description": "Bad request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorMessage"
+            }
+          }
+        }
+      },
+      "ErrorResponse-401": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorMessage"
+            }
+          }
+        }
+      },
+      "ErrorResponse-403": {
+        "description": "Forbidden",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorMessage"
+            }
+          }
+        }
+      },
+      "ErrorResponse-404": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorMessage"
+            }
+          }
+        }
+      },
+      "ErrorResponse-429": {
+        "description": "Rate limit reached",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorMessage"
+            }
+          }
+        }
+      },
+      "ErrorResponse-5XX": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorMessage"
+            }
+          }
+        }
+      }
+    },
+    "parameters": {
+      "ExpandParam": {
+        "name": "expand",
+        "in": "query",
+        "description": "Whether to expand resources referenced in the response to include additional fields",
+        "schema": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
