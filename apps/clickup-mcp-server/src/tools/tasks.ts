@@ -80,14 +80,94 @@ export function register(server: McpServer, client: ClickUpClient) {
   );
 
   server.tool(
+    "create_task",
+    "Create a new task in a ClickUp list",
+    {
+      list_id: z.string().describe("The list ID to create the task in"),
+      name: z.string().describe("Task name"),
+      markdown_description: z.string().optional().describe("Task description in markdown"),
+      parent: z.string().optional().describe("Parent task ID to create as a subtask"),
+      points: z.number().optional().describe("Story points"),
+      status: z.string().optional().describe("Task status"),
+      priority: z.number().optional().describe("Priority (1=urgent, 2=high, 3=normal, 4=low)"),
+    },
+    async ({ list_id, name, markdown_description, parent, points, status, priority }) => {
+      try {
+        const data = await client.createTask(list_id, {
+          name,
+          markdown_description,
+          parent,
+          points,
+          status,
+          priority,
+        });
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text" as const,
+              text: error instanceof Error ? error.message : String(error),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.tool(
+    "update_task",
+    "Update an existing ClickUp task",
+    {
+      task_id: z.string().describe("The task ID (internal ID or custom ID like OPS-1234)"),
+      team_id: z.string().optional().describe("Required when using custom task IDs. The workspace/team ID."),
+      name: z.string().optional().describe("New task name"),
+      markdown_description: z.string().optional().describe("New description in markdown"),
+      points: z.number().nullable().optional().describe("Story points (null to clear)"),
+      status: z.string().optional().describe("New status"),
+      priority: z.number().nullable().optional().describe("Priority (1=urgent, 2=high, 3=normal, 4=low, null to clear)"),
+      parent: z.string().optional().describe("Parent task ID"),
+    },
+    async ({ task_id, team_id, name, markdown_description, points, status, priority, parent }) => {
+      try {
+        const opts: Record<string, unknown> = {};
+        if (name !== undefined) opts.name = name;
+        if (markdown_description !== undefined) opts.markdown_description = markdown_description;
+        if (points !== undefined) opts.points = points;
+        if (status !== undefined) opts.status = status;
+        if (priority !== undefined) opts.priority = priority;
+        if (parent !== undefined) opts.parent = parent;
+        const data = await client.updateTask(task_id, opts, team_id);
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text" as const,
+              text: error instanceof Error ? error.message : String(error),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.tool(
     "get_task",
     "Get full details for a single ClickUp task (includes subtasks and markdown description)",
     {
-      task_id: z.string().describe("The task ID"),
+      task_id: z.string().describe("The task ID (internal ID or custom ID like OPS-1234)"),
+      team_id: z.string().optional().describe("Required when using custom task IDs (e.g. OPS-1234). The workspace/team ID."),
     },
-    async ({ task_id }) => {
+    async ({ task_id, team_id }) => {
       try {
-        const data = await client.getTask(task_id);
+        const data = await client.getTask(task_id, team_id);
         return {
           content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
         };

@@ -1,3 +1,27 @@
+export interface CreateTaskOptions {
+  name: string;
+  description?: string;
+  markdown_description?: string;
+  parent?: string;
+  points?: number;
+  status?: string;
+  priority?: number;
+  assignees?: number[];
+  due_date?: number;
+}
+
+export interface UpdateTaskOptions {
+  name?: string;
+  description?: string;
+  markdown_description?: string;
+  points?: number | null;
+  status?: string;
+  priority?: number;
+  assignees?: { add?: number[]; rem?: number[] };
+  due_date?: number | null;
+  parent?: string;
+}
+
 export interface GetTasksOptions {
   page?: number;
   subtasks?: boolean;
@@ -33,6 +57,36 @@ export class ClickUpClient {
       const body = await response.text();
       throw new Error(
         `ClickUp API error ${response.status}: ${response.statusText} — ${body}`
+      );
+    }
+    return response.json() as Promise<T>;
+  }
+
+  private async post<T>(url: string, body: unknown): Promise<T> {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: this.headers,
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(
+        `ClickUp API error ${response.status}: ${response.statusText} — ${text}`
+      );
+    }
+    return response.json() as Promise<T>;
+  }
+
+  private async put<T>(url: string, body: unknown): Promise<T> {
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: this.headers,
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(
+        `ClickUp API error ${response.status}: ${response.statusText} — ${text}`
       );
     }
     return response.json() as Promise<T>;
@@ -112,16 +166,42 @@ export class ClickUpClient {
     return this.get(`${this.v2Base}/team/${teamId}/task${qs ? `?${qs}` : ""}`);
   }
 
-  async getTask(taskId: string): Promise<unknown> {
-    return this.get(
-      `${this.v2Base}/task/${taskId}?include_subtasks=true&include_markdown_description=true`
-    );
+  async createTask(listId: string, opts: CreateTaskOptions): Promise<unknown> {
+    return this.post(`${this.v2Base}/list/${listId}/task`, opts);
+  }
+
+  async updateTask(taskId: string, opts: UpdateTaskOptions, teamId?: string): Promise<unknown> {
+    const params = new URLSearchParams();
+    if (teamId) {
+      params.set("custom_task_ids", "true");
+      params.set("team_id", teamId);
+    }
+    const qs = params.toString();
+    return this.put(`${this.v2Base}/task/${taskId}${qs ? `?${qs}` : ""}`, opts);
+  }
+
+  async getTask(taskId: string, teamId?: string): Promise<unknown> {
+    const params = new URLSearchParams({
+      include_subtasks: "true",
+      include_markdown_description: "true",
+    });
+    if (teamId) {
+      params.set("custom_task_ids", "true");
+      params.set("team_id", teamId);
+    }
+    return this.get(`${this.v2Base}/task/${taskId}?${params.toString()}`);
   }
 
   // ── Comments ─────────────────────────────────────────────
 
-  async getTaskComments(taskId: string): Promise<unknown> {
-    return this.get(`${this.v2Base}/task/${taskId}/comment`);
+  async getTaskComments(taskId: string, teamId?: string): Promise<unknown> {
+    const params = new URLSearchParams();
+    if (teamId) {
+      params.set("custom_task_ids", "true");
+      params.set("team_id", teamId);
+    }
+    const qs = params.toString();
+    return this.get(`${this.v2Base}/task/${taskId}/comment${qs ? `?${qs}` : ""}`);
   }
 
   // ── Docs (v3) ────────────────────────────────────────────
