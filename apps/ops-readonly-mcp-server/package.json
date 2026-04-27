@@ -1,6 +1,6 @@
 {
   "name": "@jeff-stapleton/ops-readonly-mcp-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server for Breeze Airways read-only Operations GraphQL API",
   "license": "MIT",
   "type": "module",
