@@ -24,7 +24,14 @@
       "Bash(npm cache:*)",
       "Bash(npm view:*)",
       "Bash(python3 -c \":*)",
-      "mcp__observe__execute_opal_query"
+      "mcp__observe__execute_opal_query",
+      "Bash(sh -c 'npx -y --loglevel verbose @jeff-stapleton/observe-mcp-server </dev/null')",
+      "Bash(sh -c 'npx -y -p @jeff-stapleton/observe-mcp-server observe-mcp-server </dev/null')",
+      "Bash(sh -c 'npx -y -p @jeff-stapleton/observe-mcp-server -c \"observe-mcp-server\" </dev/null')",
+      "Read(//private/tmp/**)",
+      "Bash(bash -c '{ *)",
+      "Bash(python3 -c \"import json; p=json.load\\(open\\('package.json'\\)\\); print\\('workspaces:', p.get\\('workspaces'\\)\\)\")",
+      "Bash(sh -c 'echo q | npx -y @jeff-stapleton/observe-mcp-server 2>&1')"
     ]
   }
 }

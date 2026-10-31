@@ -10,11 +10,13 @@
     "release:clickup": "nx release --projects=@jeff-stapleton/clickup-mcp-server",
     "release:tailscale": "nx release --projects=@jeff-stapleton/tailscale-mcp-server",
     "release:auth0": "nx release --projects=@jeff-stapleton/auth0-mcp-server",
+    "release:ops-readonly": "nx release --projects=@jeff-stapleton/ops-readonly-mcp-server",
     "publish:observe": "nx release publish --projects=@jeff-stapleton/observe-mcp-server",
     "publish:digitalocean": "nx release publish --projects=@jeff-stapleton/digitalocean-mcp-server",
     "publish:clickup": "nx release publish --projects=@jeff-stapleton/clickup-mcp-server",
     "publish:tailscale": "nx release publish --projects=@jeff-stapleton/tailscale-mcp-server",
-    "publish:auth0": "nx release publish --projects=@jeff-stapleton/auth0-mcp-server"
+    "publish:auth0": "nx release publish --projects=@jeff-stapleton/auth0-mcp-server",
+    "publish:ops-readonly": "nx release publish --projects=@jeff-stapleton/ops-readonly-mcp-server"
   },
   "private": true,
   "devDependencies": {
